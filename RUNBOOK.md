@@ -209,12 +209,3 @@ The dashboard itself is the fastest sanity check for a non-technical handoff —
 **Reset a stuck checkpoint:** each streaming query's checkpoint is independent (Bronze, Silver, and each of the three Gold writers). If one query is stuck or behaving unexpectedly, you can delete just that query's checkpoint folder under `/Volumes/flight_analytics/streaming/flight_data/checkpoints/<name>/` to force it to reprocess from the earliest available offset in its source — do this deliberately, since it means reprocessing history, not routine maintenance.
 
 ---
-
-## 11. Ownership / Contacts
-
-*(Fill in before handing this off — this is the one section that can't be inferred from the code.)*
-
-- Project owner:
-- Azure Event Hubs namespace admin:
-- Databricks workspace admin:
-- Where the scheduled Job's failure notifications should go:
