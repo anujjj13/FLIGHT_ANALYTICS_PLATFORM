@@ -1,0 +1,23 @@
+# Secrets - never commit
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Local data (Delta tables, streaming checkpoints) - never commit, always regenerated
+data/
+
+# Logs
+logs/
+
+# OS / editor
+.DS_Store
+.vscode/
+__MACOSX/

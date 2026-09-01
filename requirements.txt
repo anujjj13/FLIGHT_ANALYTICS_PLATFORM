@@ -1,0 +1,13 @@
+# Ingestion
+confluent-kafka==2.5.3
+requests==2.32.3
+PyYAML==6.0.2
+
+# Spark + Delta (for local testing of spark_jobs/; Databricks notebooks use the
+# cluster's built-in runtime and do not need this installed separately)
+pyspark==3.5.1
+delta-spark==3.2.0
+
+# Testing
+pytest==8.3.2
+pytest-mock==3.14.0

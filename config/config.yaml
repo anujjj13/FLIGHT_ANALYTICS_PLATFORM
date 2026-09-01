@@ -1,0 +1,97 @@
+# ============================================================
+# Central configuration for the Real-Time Flight Analytics Platform
+# Nothing in producer/ or spark_jobs/ should hardcode these values -
+# always read from this file (see config/config_loader.py).
+# ============================================================
+
+opensky:
+  # OpenSky REST API base URL for state vectors
+  base_url: "https://opensky-network.org/api/states/all"
+  token_url: "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token"
+
+  # Bounding box for geographic scope (lat/lon in decimal degrees).
+  # Currently set to India airspace. Set any value to null to disable
+  # bounding box filtering and pull global data (NOT recommended - huge volume).
+  bounding_box:
+    lamin: 6.0      # southern latitude
+    lamax: 37.0     # northern latitude
+    lomin: 68.0     # western longitude
+    lomax: 97.5     # eastern longitude
+
+  # How often to poll the API, in seconds.
+  # OpenSky's own state vectors typically refresh every 5-15s server-side,
+  # so polling faster than ~10s wastes API credits without getting fresher data.
+  poll_interval_seconds: 10
+
+  # OAuth2 client credentials - DO NOT commit real values here.
+  # Set via environment variables instead (see producer/auth.py):
+  #   OPENSKY_CLIENT_ID, OPENSKY_CLIENT_SECRET
+  client_id_env_var: "OPENSKY_CLIENT_ID"
+  client_secret_env_var: "OPENSKY_CLIENT_SECRET"
+
+kafka:
+  bootstrap_servers: "flight-analytics-eh-anuj.servicebus.windows.net:9093"
+  topic_raw: "flight_raw"
+  topic_deadletter: "flight_deadletter"
+
+  security:
+    protocol: "SASL_SSL"
+    mechanism: "PLAIN"
+
+  producer:
+    acks: "all"
+    retries: 5
+    linger_ms: 100
+    compression_type: null
+
+  consumer:
+    group_id: "flight-analytics-spark"
+    auto_offset_reset: "earliest"
+    max_offsets_per_trigger: 10000
+
+spark:
+  app_name: "FlightAnalyticsPlatform"
+  shuffle_partitions: 4          # low, since this is a local/single-machine setup, not a cluster
+  trigger_interval: "10 seconds"  # micro-batch interval for structured streaming
+
+delta:
+  base_path: "./data/delta"       # local path; would be an ADLS/S3/DBFS path in cloud deployments
+  bronze_path: "./data/delta/bronze/flights"
+  silver_path: "./data/delta/silver/flights"
+  silver_deadletter_path: "./data/delta/silver/flights_deadletter"
+  gold_path: "./data/delta/gold"
+  checkpoint_base: "./data/checkpoints"
+
+streaming:
+  # Watermark: how long we tolerate late-arriving data (by event time)
+  # before a record is excluded from windowed aggregations.
+  # 30s chosen as a balance between dashboard freshness and not dropping
+  # legitimately-late records from network/API delays.
+  watermark_delay: "30 seconds"
+
+  # Window sizes for Gold-layer aggregations
+  aggregation_window: "1 minute"
+  aggregation_slide: "30 seconds"   # sliding window - overlaps for smoother dashboard updates
+
+data_quality:
+  # Hard-reject rules -> record goes to flight_deadletter, excluded from Silver
+  hard_rules:
+    latitude_range: [-90, 90]
+    longitude_range: [-180, 180]
+    altitude_min_m: 0          # negative altitude is not physically valid (allow small margin in code)
+    velocity_min_ms: 0
+
+  # Soft-flag rules -> record kept in Silver, but flagged in a quality column
+  soft_rules:
+    - "callsign_present"
+    - "position_fresh"          # time_position within freshness_threshold_seconds
+
+  freshness_threshold_seconds: 20
+
+  # Minimum acceptable batch-level DQ score before alerting (just logged locally here,
+  # would page/alert in a real production system)
+  min_batch_dq_score_pct: 90
+
+logging:
+  level: "INFO"
+  log_dir: "./logs"
